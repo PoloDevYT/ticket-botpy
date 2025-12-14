@@ -1,81 +1,77 @@
-# KiraBot — Tickets + Verificação (Discord)
+# KiraBot — Tickets, Verificação e Painel Web
 
-Um bot simples e “pronto pra uso” para Discord, com:
-- Painel de tickets (botão + menu de categorias)
-- Categorias/canais criados automaticamente (organizado)
-- Controle por cargo de staff (atendimento)
-- Logs de abertura/fechamento
-- Transcrição automática ao fechar o ticket (arquivo .txt)
-- Multi-servidor isolado (cada servidor tem suas configurações no SQLite)
+Este repositório reúne o bot de tickets para Discord e um painel HTML para visualizar dados e ajustar configurações. Tudo está em português e pronto para uso rápido.
+
+## Funcionalidades principais
+- **Painel de tickets no Discord**: botão de abertura e menu de categorias.
+- **Categorias automáticas**: cria e organiza os canais necessários.
+- **Controle de staff**: apenas quem tem o cargo autorizado enxerga e atende.
+- **Logs e transcrições**: fechamento gera arquivo `.txt` e envia no canal de logs.
+- **Painel web (HTML)**: login via Discord OAuth2, lista servidores onde você é admin, exibe estatísticas e permite editar IDs de log e cargo staff diretamente no banco.
 
 ## Requisitos
 - Python 3.10+ (recomendado 3.11+)
+- Bibliotecas do `requirements.txt`
 - Permissões do bot no servidor:
   - Manage Channels
   - Manage Roles (para verificação)
   - Read/Send Messages
 
-## Instalação
-1) Instale as dependências:
-```bash
-pip install -r requirements.txt
-```
+## Configuração do bot
+1. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Crie o `.env` usando `.env.example` como base e defina pelo menos `DISCORD_TOKEN`.
+3. Inicie o bot:
+   ```bash
+   python bot.py
+   ```
 
-2) Crie o arquivo `.env` (ou exporte a variável no sistema).  
-Use o modelo:
-- `.env.example`
+### Primeiro setup no servidor
+Como administrador do servidor, execute os comandos no Discord:
+1. Definir cargo de staff (quem atende e enxerga tickets):
+   ```text
+   r!setup_staff @SeuCargoStaff
+   ```
+2. Definir canal de logs (onde vão transcrições e eventos):
+   ```text
+   r!setup_logs #logs-tickets
+   ```
+3. (Opcional) Definir canal para publicar o painel de tickets:
+   ```text
+   r!setup_panel #painel
+   ```
+4. Postar os painéis:
+   ```text
+   r!post_ticket
+   r!post_verificar
+   ```
 
-3) Rode:
-```bash
-python bot.py
-```
+## Painel web HTML
+O painel web consome o mesmo `tickets.db` que o bot e usa OAuth2 do Discord.
 
-## Primeiro setup (no servidor)
-Como **admin do servidor**, rode:
+1. Configure no `.env`:
+   - `DISCORD_CLIENT_ID`
+   - `DISCORD_CLIENT_SECRET`
+   - `DISCORD_REDIRECT_URI` (opcional, padrão `http://localhost:5000/callback`)
+   - `DISCORD_TOKEN` (para detectar em quais servidores o bot já está)
+2. Inicie o painel:
+   ```bash
+   python dashboard.py
+   ```
+3. Acesse `http://localhost:5000`, faça login com Discord e selecione o servidor onde você é administrador.
+4. No painel do servidor você pode:
+   - Ver contagem de tickets por categoria.
+   - Listar tickets em aberto (dados vindos do `tickets.db`).
+   - Atualizar IDs do canal de logs e do cargo de staff.
 
-1) Definir cargo de staff (quem atende e enxerga tickets):
-```text
-r!setup_staff @SeuCargoStaff
-```
+## Banco de dados
+O arquivo `tickets.db` é criado automaticamente. Ele armazena:
+- Configurações do servidor (painel, logs, staff)
+- Tickets em aberto
+- Categorias já criadas
 
-2) Definir canal de logs (onde vão as transcrições e eventos):
-```text
-r!setup_logs #logs-tickets
-```
-
-3) (Opcional) Definir onde quer postar o painel:
-```text
-r!setup_panel #painel
-```
-
-4) Postar os painéis:
-```text
-r!post_ticket
-r!post_verificar
-```
-
-## Como funciona
-- Se as categorias de tickets não existirem, o bot cria:
-  - 📩 Tickets - Suporte
-  - 💰 Tickets - Financeiro
-  - 🧩 Tickets - ModCreator
-  - 🎭 Tickets - ModelCreator
-- Ao abrir ticket, o bot cria um canal privado dentro da categoria correta.
-- O dono do ticket e o staff conseguem fechar.
-- Ao fechar, o bot gera uma transcrição `.txt` e envia no canal de logs.
-
-## Ajuda rápida
-```text
-r!help_ticket
-```
-
-## Banco de dados (SQLite)
-O bot cria o arquivo `tickets.db` automaticamente.  
-Ele guarda:
-- Config do servidor (logs, staff, painel)
-- Tickets abertos
-- Categorias criadas
-
-## Segurança
-- Nunca coloque o token no código.
-- Regere o token se ele já foi exposto em algum lugar.
+## Boas práticas de segurança
+- Nunca coloque o token do bot em código ou capturas de tela.
+- Regere o token se ele for exposto.

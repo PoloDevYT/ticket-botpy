@@ -27,19 +27,16 @@ def index():
     if "user" not in session:
         return render_template("index.html")
     
-    # Se logado, busca os servidores do usuário onde ele é Admin
     headers = {"Authorization": f"Bearer {session['token']}"}
     r = requests.get(f"{API_BASE_URL}/users/@me/guilds", headers=headers)
     
     if r.status_code == 200:
         all_guilds = r.json()
         
-        # Busca servidores onde o BOT está
         bot_token = os.getenv("DISCORD_TOKEN")
         bot_guilds_ids = set()
         if bot_token:
             headers_bot = {"Authorization": f"Bot {bot_token}"}
-            # Limite de 200 é o máximo por request, suficiente para bots menores
             r_bot = requests.get(f"{API_BASE_URL}/users/@me/guilds?limit=200", headers=headers_bot)
             if r_bot.status_code == 200:
                 bot_guilds_ids = {g["id"] for g in r_bot.json()}
@@ -47,7 +44,7 @@ def index():
         admin_guilds = []
         for guild in all_guilds:
             perms = int(guild["permissions"])
-            if perms & 0x8: # Admin check
+            if perms & 0x8:
                 guild["has_bot"] = guild["id"] in bot_guilds_ids
                 admin_guilds.append(guild)
                 
@@ -86,7 +83,6 @@ def callback():
     token_json = r.json()
     access_token = token_json["access_token"]
     
-    # Pegar user info
     user_headers = {"Authorization": f"Bearer {access_token}"}
     r_user = requests.get(f"{API_BASE_URL}/users/@me", headers=user_headers)
     
@@ -109,35 +105,25 @@ def server_dashboard(guild_id):
     if "user" not in session:
         return redirect("/")
     
-    # Validar se o usuário ainda é admin desse server (segurança extra, opcional mas recmendado)
-    # Por simplicidade, assumir que a sessão é válida e curta.
-    
     conn = get_db_connection()
-    
-    # Stats
+
     stats = {
         "open_tickets": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=?", (guild_id,)).fetchone()[0],
-        "total_tickets": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=?", (guild_id,)).fetchone()[0], # Assumindo que não deletamos do DB histórico (mas o bot deleta... hmm. O bot deleta. Então isso é igual open_tickets. O ideal seria não deletar do DB, só marcar como closed. Mas o bot atual deleta. Vou notar isso para o usuário.)
-        # Na vdd o bot deleta do DB: delete_ticket_by_channel. Então só mostra tickets abertos.
+        "total_tickets": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=?", (guild_id,)).fetchone()[0],
         "support": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=? AND category_key='support'", (guild_id,)).fetchone()[0],
         "finance": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=? AND category_key='financeiro'", (guild_id,)).fetchone()[0],
         "modcreator": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=? AND category_key='modcreator'", (guild_id,)).fetchone()[0],
         "modelcreator": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=? AND category_key='modelcreator'", (guild_id,)).fetchone()[0],
         "formstaff": conn.execute("SELECT COUNT(*) FROM tickets WHERE guild_id=? AND category_key='formstaff'", (guild_id,)).fetchone()[0],
     }
-    
-    # Config
+
     config_row = conn.execute("SELECT * FROM guild_config WHERE guild_id=?", (guild_id,)).fetchone()
     config = dict(config_row) if config_row else {}
-    
-    # Recent Tickets
+
     recent_tickets = conn.execute("SELECT * FROM tickets WHERE guild_id=?", (guild_id,)).fetchall()
-    
+
     conn.close()
-    
-    # Fake guild name since we don't have bot token here comfortably or cache. 
-    # Front-end can pass it or we fetch again. Let's just use ID or generic.
-    # actually we have user token, we can find it in their list.
+
     guild_name = f"Servidor {guild_id}"
     
     return render_template("dashboard.html", guild_id=guild_id, guild_name=guild_name, stats=stats, config=config, recent_tickets=recent_tickets)
@@ -151,7 +137,6 @@ def update_config(guild_id):
     staff_role_id = request.form.get("staff_role_id")
     
     conn = get_db_connection()
-    # Upsert logic duplicated from bot.py roughly
     conn.execute("""
         INSERT INTO guild_config (guild_id, log_channel_id, staff_role_id)
         VALUES (?, ?, ?)
