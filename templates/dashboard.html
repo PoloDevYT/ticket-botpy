@@ -1,0 +1,124 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem;">
+    <a href="/" class="btn" style="background: rgba(255,255,255,0.1);"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+    <h2>Painel de {{ guild_name }}</h2>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="card glass-panel">
+        <div class="stat-value">{{ stats.open_tickets }}</div>
+        <div class="stat-label">Tickets Abertos</div>
+    </div>
+    <div class="card glass-panel">
+        <div class="stat-value">{{ stats.total_tickets }}</div>
+        <div class="stat-label">Total Histórico</div>
+    </div>
+    <div class="card glass-panel">
+        <div class="stat-value">{{ stats.support }}</div>
+        <div class="stat-label">Suporte</div>
+    </div>
+    <div class="card glass-panel">
+        <div class="stat-value">{{ stats.finance }}</div>
+        <div class="stat-label">Financeiro</div>
+    </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="card glass-panel">
+        <h3>Últimos Tickets</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Usuário</th>
+                        <th>Categoria</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in recent_tickets %}
+                    <tr>
+                        <td>{{ ticket.user_id }}</td>
+                        <td><span class="badge badge-blue">{{ ticket.category_key }}</span></td>
+                        <td>{{ ticket.created_at[:10] }}</td>
+                        <td><span class="badge badge-green">Aberto</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhum ticket aberto no
+                            momento.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card glass-panel">
+        <h3>Distribuição</h3>
+        <canvas id="categoryChart"></canvas>
+    </div>
+</div>
+
+<div class="card glass-panel" style="margin-top: 1.5rem;">
+    <h3>Configurações do Servidor</h3>
+    <form action="/server/{{ guild_id }}/config" method="POST" style="margin-top: 1rem; display: grid; gap: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Canal de Logs
+                    (ID)</label>
+                <input type="text" name="log_channel_id" value="{{ config.log_channel_id or '' }}"
+                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: white; border-radius: 8px;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Cargo Staff (ID)</label>
+                <input type="text" name="staff_role_id" value="{{ config.staff_role_id or '' }}"
+                    style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: white; border-radius: 8px;">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="justify-content: center;">Salvar Configurações</button>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Suporte', 'Financeiro', 'ModCreator', 'ModelCreator', 'FormStaff'],
+            datasets: [{
+                data: [
+                    {{ stats.support }},
+            {{ stats.finance }}, 
+                    {{ stats.modcreator }},
+        {{ stats.modelcreator }},
+        {{ stats.formstaff }}
+                ],
+        backgroundColor: [
+        '#6366f1',
+        '#22c55e',
+        '#eab308',
+        '#ec4899',
+        '#f97316'
+    ],
+        borderWidth: 0
+            }]
+        },
+        options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color: '#94a3b8' }
+            }
+        }
+    }
+    });
+</script>
+{% endblock %}

@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import io
 import sqlite3
 from datetime import datetime, timezone
@@ -14,6 +17,7 @@ DEFAULT_CATEGORY_NAMES = {
     "financeiro": "💰 Tickets - Financeiro",
     "modcreator": "🧩 Tickets - ModCreator",
     "modelcreator": "🎭 Tickets - ModelCreator",
+    "formstaff": "🧩 Aplicação - Formulário Staff",
 }
 
 DEFAULT_PANEL_CHANNEL_NAME = "painel-ticket"
@@ -206,6 +210,7 @@ def ticket_embed_open(member: discord.Member, category_key: str) -> discord.Embe
         "financeiro": "🎫 Ticket - Financeiro",
         "modcreator": "🎫 Ticket - ModCreator",
         "modelcreator": "🎫 Ticket - ModelCreator",
+        "formstaff": "🎫 Formulario - Aplicação Staff",
     }
     emb = discord.Embed(
         title=titles.get(category_key, "🎫 Ticket"),
@@ -297,6 +302,7 @@ class TicketCategorySelect(discord.ui.Select):
             discord.SelectOption(label="Financeiro", value="financeiro", description="Abrir ticket financeiro"),
             discord.SelectOption(label="ModCreator", value="modcreator", description="Abrir ticket ModCreator"),
             discord.SelectOption(label="ModelCreator", value="modelcreator", description="Abrir ticket ModelCreator"),
+            discord.SelectOption(label="Formulario Staff", value="formstaff", description="Abrir ticket Formulario Staff"),
         ]
         super().__init__(
             placeholder="Selecione o ticket que deseja!",
