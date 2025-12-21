@@ -66,6 +66,7 @@
 <div class="card glass-panel" style="margin-top: 1.5rem;">
     <h3>Configurações do Servidor</h3>
     <form action="/server/{{ guild_id }}/config" method="POST" style="margin-top: 1rem; display: grid; gap: 1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div>
                 <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Canal de Logs

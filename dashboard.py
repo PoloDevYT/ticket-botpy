@@ -1,5 +1,6 @@
 
 import os
+import secrets
 import sqlite3
 import requests
 from flask import Flask, render_template, session, redirect, request, url_for, flash
@@ -22,35 +23,58 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_user_admin_guilds(access_token):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(f"{API_BASE_URL}/users/@me/guilds", headers=headers)
+
+    if response.status_code != 200:
+        return []
+
+    admin_guilds = []
+    for guild in response.json():
+        perms = int(guild.get("permissions", 0))
+        if perms & 0x8:
+            admin_guilds.append(guild)
+
+    return admin_guilds
+
+
+def get_authorized_guild(guild_id):
+    if "token" not in session:
+        return None
+
+    for guild in get_user_admin_guilds(session["token"]):
+        if guild.get("id") == str(guild_id):
+            return guild
+
+    return None
+
+
+def get_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+
+
 @app.route("/")
 def index():
     if "user" not in session:
         return render_template("index.html")
-    
-    headers = {"Authorization": f"Bearer {session['token']}"}
-    r = requests.get(f"{API_BASE_URL}/users/@me/guilds", headers=headers)
-    
-    if r.status_code == 200:
-        all_guilds = r.json()
-        
-        bot_token = os.getenv("DISCORD_TOKEN")
-        bot_guilds_ids = set()
-        if bot_token:
-            headers_bot = {"Authorization": f"Bot {bot_token}"}
-            r_bot = requests.get(f"{API_BASE_URL}/users/@me/guilds?limit=200", headers=headers_bot)
-            if r_bot.status_code == 200:
-                bot_guilds_ids = {g["id"] for g in r_bot.json()}
-        
-        admin_guilds = []
-        for guild in all_guilds:
-            perms = int(guild["permissions"])
-            if perms & 0x8:
-                guild["has_bot"] = guild["id"] in bot_guilds_ids
-                admin_guilds.append(guild)
-                
-        return render_template("index.html", guilds=admin_guilds, client_id=CLIENT_ID)
-    
-    return render_template("index.html", guilds=[])
+
+    admin_guilds = get_user_admin_guilds(session["token"])
+
+    bot_token = os.getenv("DISCORD_TOKEN")
+    bot_guilds_ids = set()
+    if bot_token:
+        headers_bot = {"Authorization": f"Bot {bot_token}"}
+        r_bot = requests.get(f"{API_BASE_URL}/users/@me/guilds?limit=200", headers=headers_bot)
+        if r_bot.status_code == 200:
+            bot_guilds_ids = {g["id"] for g in r_bot.json()}
+
+    for guild in admin_guilds:
+        guild["has_bot"] = guild["id"] in bot_guilds_ids
+
+    return render_template("index.html", guilds=admin_guilds, client_id=CLIENT_ID)
 
 @app.route("/login")
 def login():
@@ -104,7 +128,12 @@ def logout():
 def server_dashboard(guild_id):
     if "user" not in session:
         return redirect("/")
-    
+
+    guild = get_authorized_guild(guild_id)
+    if not guild:
+        flash("Você não tem permissão para acessar este servidor.", "error")
+        return redirect("/")
+
     conn = get_db_connection()
 
     stats = {
@@ -124,14 +153,22 @@ def server_dashboard(guild_id):
 
     conn.close()
 
-    guild_name = f"Servidor {guild_id}"
+    guild_name = guild.get("name") or f"Servidor {guild_id}"
     
-    return render_template("dashboard.html", guild_id=guild_id, guild_name=guild_name, stats=stats, config=config, recent_tickets=recent_tickets)
+    return render_template("dashboard.html", guild_id=guild_id, guild_name=guild_name, stats=stats, config=config, recent_tickets=recent_tickets, csrf_token=get_csrf_token())
 
 @app.route("/server/<int:guild_id>/config", methods=["POST"])
 def update_config(guild_id):
     if "user" not in session:
         return redirect("/")
+    
+    if not get_authorized_guild(guild_id):
+        flash("Você não tem permissão para alterar as configurações deste servidor.", "error")
+        return redirect("/")
+
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        flash("Token CSRF inválido. Tente novamente.", "error")
+        return redirect(url_for("server_dashboard", guild_id=guild_id))
         
     log_channel_id = request.form.get("log_channel_id")
     staff_role_id = request.form.get("staff_role_id")
