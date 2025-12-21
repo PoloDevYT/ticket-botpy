@@ -1,5 +1,6 @@
 
 import os
+import secrets
 import sqlite3
 import requests
 from flask import Flask, render_template, session, redirect, request, url_for, flash
@@ -47,6 +48,12 @@ def get_authorized_guild(guild_id):
             return guild
 
     return None
+
+
+def get_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
 
 
 @app.route("/")
@@ -148,7 +155,7 @@ def server_dashboard(guild_id):
 
     guild_name = guild.get("name") or f"Servidor {guild_id}"
     
-    return render_template("dashboard.html", guild_id=guild_id, guild_name=guild_name, stats=stats, config=config, recent_tickets=recent_tickets)
+    return render_template("dashboard.html", guild_id=guild_id, guild_name=guild_name, stats=stats, config=config, recent_tickets=recent_tickets, csrf_token=get_csrf_token())
 
 @app.route("/server/<int:guild_id>/config", methods=["POST"])
 def update_config(guild_id):
@@ -158,6 +165,10 @@ def update_config(guild_id):
     if not get_authorized_guild(guild_id):
         flash("Você não tem permissão para alterar as configurações deste servidor.", "error")
         return redirect("/")
+
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        flash("Token CSRF inválido. Tente novamente.", "error")
+        return redirect(url_for("server_dashboard", guild_id=guild_id))
         
     log_channel_id = request.form.get("log_channel_id")
     staff_role_id = request.form.get("staff_role_id")
