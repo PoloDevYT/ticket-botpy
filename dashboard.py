@@ -8,8 +8,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+SECRET_KEY = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("Defina a variável de ambiente FLASK_SECRET_KEY para proteger as sessões.")
+
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true",
+    SESSION_COOKIE_SAMESITE=os.getenv("SESSION_COOKIE_SAMESITE", "Lax"),
+)
 
 # Configurações do Discord
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
